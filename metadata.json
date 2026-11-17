@@ -1,6 +1,0 @@
-{
-  "name": "BlockBlast & Waudoku",
-  "description": "Ein taktisches Block-Puzzle-Spiel im Stil von Block Blast (8x8) und Waudoku (9x9) für Browser und GitHub Pages.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
