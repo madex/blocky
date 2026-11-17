@@ -215,9 +215,18 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
     isGameOver,
   };
 
-  // Reset entire arena when resetToken changes
+  const onScoreChangeRef = useRef(onScoreChange);
+  onScoreChangeRef.current = onScoreChange;
+
+  const onGameOverRef = useRef(onGameOver);
+  onGameOverRef.current = onGameOver;
+
+  // Reset entire arena ONLY when resetToken changes
   useEffect(() => {
-    if (clearTimerRef.current) window.clearTimeout(clearTimerRef.current);
+    if (clearTimerRef.current) {
+      window.clearTimeout(clearTimerRef.current);
+      clearTimerRef.current = null;
+    }
     isClearingRef.current = false;
 
     const freshBoard = createEmptyBoard();
@@ -235,8 +244,8 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
     setPaused(false);
     setClearingRows(new Set());
     setPopups([]);
-    onScoreChange(0, 0, 0);
-  }, [resetToken, onScoreChange]);
+    onScoreChangeRef.current(0, 0, 0);
+  }, [resetToken]);
 
   useEffect(() => {
     return () => {
@@ -297,14 +306,19 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
         }
       }
 
-      const spawnNextPiece = (settledBoard: FallingGrid, updatedScore: number, updatedLines: number, updatedBestStreak: number) => {
+      const spawnNextPiece = (
+        settledBoard: FallingGrid,
+        updatedScore: number,
+        updatedLines: number,
+        updatedBestStreak: number,
+      ) => {
         const candidate = createSpawnPiece(curNext);
         const following = randomTemplate();
 
         if (collides(settledBoard, candidate.matrix, candidate.row, candidate.col)) {
           setBoard(settledBoard);
           soundEngine.playGameOver();
-          onGameOver(updatedScore, updatedLines, updatedBestStreak);
+          onGameOverRef.current(updatedScore, updatedLines, updatedBestStreak);
           return;
         }
 
@@ -340,7 +354,7 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
         setLinesCleared(nextLines);
         setStreak(nextStreak);
         setBestStreak(nextBestStreak);
-        onScoreChange(nextScore, nextLines, nextBestStreak);
+        onScoreChangeRef.current(nextScore, nextLines, nextBestStreak);
 
         const label =
           k >= 4
@@ -362,25 +376,28 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
         );
 
         clearTimerRef.current = window.setTimeout(() => {
+          clearTimerRef.current = null;
           const fullSet = new Set(fullRowIndices);
-          const remaining = merged.filter((_, idx) => !fullSet.has(idx));
+          const remaining = merged
+            .filter((_, idx) => !fullSet.has(idx))
+            .map((r) => [...r]);
           while (remaining.length < ROWS) {
             remaining.unshift(Array<ColorId | null>(COLS).fill(null));
           }
           setClearingRows(new Set());
           isClearingRef.current = false;
           spawnNextPiece(remaining, nextScore, nextLines, nextBestStreak);
-        }, 170);
+        }, 180);
       } else {
         const nextScore = curScore + dropBonusPoints + 10;
         setScore(nextScore);
         setStreak(0);
-        onScoreChange(nextScore, curLines, curBestStreak);
+        onScoreChangeRef.current(nextScore, curLines, curBestStreak);
         soundEngine.playPlace();
         spawnNextPiece(merged, nextScore, curLines, curBestStreak);
       }
     },
-    [onGameOver, onScoreChange, spawnPopup, t],
+    [spawnPopup, t],
   );
 
   const moveHorizontal = useCallback((deltaCol: number) => {
@@ -408,26 +425,28 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
 
   const stepDown = useCallback(
     (isSoftDrop = false) => {
-      const { board: b, active: a, paused: p, isGameOver: over } = stateRef.current;
+      const {
+        board: b,
+        active: a,
+        score: curS,
+        linesCleared: curL,
+        bestStreak: curBS,
+        paused: p,
+        isGameOver: over,
+      } = stateRef.current;
       if (p || over || isClearingRef.current) return;
       if (!collides(b, a.matrix, a.row + 1, a.col)) {
         setActive({ ...a, row: a.row + 1 });
         if (isSoftDrop) {
-          setScore((prev) => {
-            const next = prev + 1;
-            onScoreChange(
-              next,
-              stateRef.current.linesCleared,
-              stateRef.current.bestStreak,
-            );
-            return next;
-          });
+          const next = curS + 1;
+          setScore(next);
+          onScoreChangeRef.current(next, curL, curBS);
         }
       } else {
         lockPieceAndAdvance(a, 0);
       }
     },
-    [lockPieceAndAdvance, onScoreChange],
+    [lockPieceAndAdvance],
   );
 
   const hardDrop = useCallback(() => {
@@ -488,11 +507,12 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
     ghostRow++;
   }
 
-  // Build lookup sets for active and ghost cells
+  // Build lookup sets for active and ghost cells using reactive clearingRows state
+  const isClearingNow = clearingRows.size > 0;
   const activeCellMap = new Map<string, ColorId>();
   const ghostCellSet = new Set<string>();
 
-  if (!isClearingRef.current) {
+  if (!isClearingNow) {
     for (let r = 0; r < active.matrix.length; r++) {
       for (let c = 0; c < active.matrix[0].length; c++) {
         if (active.matrix[r][c] === 1) {
@@ -631,6 +651,22 @@ export const FallingBlockArena: React.FC<FallingBlockArenaProps> = ({
               }),
             )}
           </div>
+
+          {/* Horizontal Laser Glow on Clearing Rows */}
+          {isClearingNow && (
+            <div className="pointer-events-none absolute inset-1.5 sm:inset-2 z-10 overflow-hidden rounded-lg">
+              {Array.from(clearingRows).map((rIdx) => (
+                <div
+                  key={`laser_row_${rIdx}`}
+                  style={{
+                    top: `${(rIdx / ROWS) * 100}%`,
+                    height: `${100 / ROWS}%`,
+                  }}
+                  className="absolute left-0 right-0 bg-gradient-to-r from-sky-300/80 via-white to-sky-300/80 shadow-[0_0_16px_rgba(255,255,255,0.9)] animate-line-laser"
+                />
+              ))}
+            </div>
+          )}
 
           {/* Pause Overlay */}
           {paused && !isGameOver && (

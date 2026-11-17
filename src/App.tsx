@@ -931,17 +931,20 @@ export default function App() {
     });
   }, [mode]);
 
+  const highScoresRef = useRef(highScores);
+  highScoresRef.current = highScores;
+
   const handleFallingScoreChange = useCallback(
     (nextScore: number, nextLines: number, nextBestStreak: number) => {
       setScore(nextScore);
       setLinesCleared(nextLines);
       setBestCombo(nextBestStreak);
-      if (nextScore > highScores.blocksturz) {
+      if (nextScore > highScoresRef.current.blocksturz) {
         setIsNewRecord(true);
         persistHighScore(nextScore, 'blocksturz');
       }
     },
-    [highScores.blocksturz, persistHighScore],
+    [persistHighScore],
   );
 
   const handleFallingGameOver = useCallback(
@@ -949,13 +952,13 @@ export default function App() {
       setScore(finalScore);
       setLinesCleared(totalLines);
       setBestCombo(finalBestStreak);
-      if (finalScore > highScores.blocksturz) {
+      if (finalScore > highScoresRef.current.blocksturz) {
         setIsNewRecord(true);
       }
       persistHighScore(finalScore, 'blocksturz');
       setGameState('GAME_OVER');
     },
-    [highScores.blocksturz, persistHighScore],
+    [persistHighScore],
   );
 
   const resumeSavedGame = useCallback(() => {

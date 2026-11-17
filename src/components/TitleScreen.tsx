@@ -54,7 +54,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       <header className="w-full max-w-4xl mx-auto px-4 sm:px-5 py-3.5 flex items-center justify-between gap-4 border-b border-slate-800/80">
         <div className="flex items-center gap-2.5 shrink-0">
           <img
-            src="./blocky-icon.jpg"
+            src="./blocky-icon.webp"
             alt="Blocky Icon"
             className="w-8 h-8 rounded-lg object-cover border border-white/15 shadow-sm"
           />
@@ -117,7 +117,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       <main className="w-full max-w-3xl mx-auto px-5 py-6 sm:py-8 flex-1 flex flex-col justify-center">
         <div className="flex items-center gap-4 mb-6">
           <img
-            src="./blocky-icon.jpg"
+            src="./blocky-icon.webp"
             alt="Blocky App Icon"
             className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border border-white/15 shadow-xl shadow-indigo-950/60 shrink-0"
           />
